@@ -36,6 +36,19 @@ cd $SCOPE_ROOT
 ./build/bin/run --model ./model/smpl_male.npz --prior ./model/joint_prior.json --keypoint ./examples/keypoints.json --result ./examples/results.json
 ```
 
+### Synthetic point-cloud Gauss-Newton demo
+Generate a synthetic target point cloud from SMPL vertices with random shape
+parameters, then recover shape parameters with a point-to-plane Gauss-Newton
+solver and visualize target/initial/final point clouds.
+
+```shell
+cd $SCOPE_ROOT
+python3 ./examples/pointcloud_gn_demo.py --model ./model/smpl_male.npz --iters 40
+```
+
+The script uses Open3D if available, otherwise falls back to a lightweight
+matplotlib 3D visualization.
+
 ## Dataset
 ### 2D and 3D Keypoints
 The 2D and 3D keypoints estimates from [AlphaPose](https://github.com/MVIG-SJTU/AlphaPose) and [VideoPose3D](https://github.com/facebookresearch/VideoPose3D) can be downloaded from [Google Drive](https://drive.google.com/drive/folders/1DvRE-G-74vjmQiDXDCgndF-xXvENK5ZH?usp=sharing).
@@ -103,4 +116,3 @@ journal={Proceedings of the IEEE/CVF International Conference on Computer Vision
 year={2021}
 }
 ```
-

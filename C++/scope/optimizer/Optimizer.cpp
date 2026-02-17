@@ -574,7 +574,11 @@ int Optimizer<K, P, N, CamOpt>::addDepthCameraFactor(
       exit(-1);
     }
 
-    index = FactorIndex::VertexDepthCamera;
+    if (std::dynamic_pointer_cast<VertexPointToPlaneFactor>(factor)) {
+      index = FactorIndex::VertexPointToPlane;
+    } else {
+      index = FactorIndex::VertexDepthCamera;
+    }
   }
 
   std::array<std::shared_ptr<Factor::Evaluation>, 2> evals;
@@ -1491,6 +1495,7 @@ int Optimizer<K, P, N, CamOpt>::linearize() const {
   updateRelPOFFactorGaussNewton();
   updateJointDepthCameraFactorGaussNewton();
   updateVertexDepthCameraFactorGaussNewton();
+  updateVertexPointToPlaneFactorGaussNewton();
   updateJointLimitFactorGaussNewton();
   updateCollisionFactorGaussNewton();
   updatePoseConstFactorGaussNewton();
@@ -1550,6 +1555,7 @@ int Optimizer<K, P, N, CamOpt>::linearizeFactors(int pose) const {
   updateRelPOFFactorGaussNewton(pose);
   updateJointDepthCameraFactorGaussNewton(pose);
   updateVertexDepthCameraFactorGaussNewton(pose);
+  updateVertexPointToPlaneFactorGaussNewton(pose);
   updateJointLimitFactorGaussNewton(pose);
   updateCollisionFactorGaussNewton(pose);
   updatePoseConstFactorGaussNewton(pose);
@@ -1962,6 +1968,58 @@ int Optimizer<K, P, N, CamOpt>::updateVertexDepthCameraFactorGaussNewton()
         Eigen::Map<const Matrix<3, 6>>(lin->jacobians[0][0].data());
     const auto &JVertex =
         Eigen::Map<const Matrix<3, P>>(lin->jacobians[3][0].data());
+
+    const auto &gPose = lin->gPose;
+    const auto &gVertex = Eigen::Map<const Vector<P>>(lin->gVertex.data());
+
+    auto &M = mvM[pose];
+
+    auto &mx = mvmx[pose];
+    auto &mp = mvmp[pose];
+
+    M.template topLeftCorner<DPoseSize, DPoseSize>().noalias() +=
+        weight * JPose.transpose() * JPose;
+
+    M.template block<VertexParamSize, DPoseSize>(DVertexParamOffset,
+                                                 DPoseOffset)
+        .noalias() += weight * JVertex.transpose() * JPose;
+
+    M.template block<VertexParamSize, VertexParamSize>(DVertexParamOffset,
+                                                       DVertexParamOffset)
+        .noalias() += weight * JVertex.transpose() * JVertex;
+
+    mx += weight * gPose;
+    mp.template segment<VertexParamSize>(DVertexParamOffset - DParamOffset) +=
+        weight * gVertex;
+  }
+
+  return 0;
+}
+
+template <int K, int P, int N, bool CamOpt>
+int Optimizer<K, P, N, CamOpt>::updateVertexPointToPlaneFactorGaussNewton()
+    const {
+  const auto &options = mOptions;
+
+  const auto &factors = mvFactors[FactorIndex::VertexPointToPlane];
+  const auto &evals = mvFactorEvals[0][FactorIndex::VertexPointToPlane];
+  const auto &lins = mvFactorLins[FactorIndex::VertexPointToPlane];
+
+  const auto &weight = options.weights[FactorIndex::VertexPointToPlane];
+
+  for (int i = 0; i < factors.size(); i++) {
+    const auto &factor = factors[i];
+
+    const auto &lin =
+        std::dynamic_pointer_cast<const VertexPointToPlaneFactor::Linearization>(
+            lins[i]);
+
+    const auto &pose = factor->getPoses()[0];
+
+    const auto &JPose =
+        Eigen::Map<const Matrix<1, 6>>(lin->jacobians[0][0].data());
+    const auto &JVertex =
+        Eigen::Map<const Matrix<1, P>>(lin->jacobians[3][0].data());
 
     const auto &gPose = lin->gPose;
     const auto &gVertex = Eigen::Map<const Vector<P>>(lin->gVertex.data());
@@ -2747,6 +2805,70 @@ int Optimizer<K, P, N, CamOpt>::updateVertexDepthCameraFactorGaussNewton(
         Eigen::Map<const Matrix<3, 6>>(lin->jacobians[0][0].data());
     const auto &JVertex =
         Eigen::Map<const Matrix<3, P>>(lin->jacobians[3][0].data());
+
+    const auto &gPose = lin->gPose;
+    const auto &gVertex = Eigen::Map<const Vector<P>>(lin->gVertex.data());
+
+    M.template topLeftCorner<DPoseSize, DPoseSize>().noalias() +=
+        weight * JPose.transpose() * JPose;
+
+    M.template block<VertexParamSize, DPoseSize>(DVertexParamOffset,
+                                                 DPoseOffset)
+        .noalias() += weight * JVertex.transpose() * JPose;
+
+    M.template block<VertexParamSize, VertexParamSize>(DVertexParamOffset,
+                                                       DVertexParamOffset)
+        .noalias() += weight * JVertex.transpose() * JVertex;
+
+    mx += weight * gPose;
+    mp.template segment<VertexParamSize>(DVertexParamOffset - DParamOffset) +=
+        weight * gVertex;
+  }
+
+  return 0;
+}
+
+template <int K, int P, int N, bool CamOpt>
+int Optimizer<K, P, N, CamOpt>::updateVertexPointToPlaneFactorGaussNewton(
+    int pose) const {
+  static const int index = FactorIndex::VertexPointToPlane;
+
+  assert(pose >= 0 && pose < NumPoses);
+
+  if (pose < 0 || pose >= NumPoses) {
+    LOG(ERROR) << "The pose must be valid." << std::endl;
+
+    exit(-1);
+  }
+
+  const auto &factors = mnvFactors[pose][index];
+
+  if (factors.empty()) {
+    return 0;
+  }
+
+  const auto &evals = mnvFactorEvals[0][pose][index];
+  const auto &lins = mnvFactorLins[pose][index];
+
+  const auto &weight = mOptions.weights[index];
+
+  auto &M = mvM[pose];
+  auto &mx = mvmx[pose];
+  auto &mp = mvmp[pose];
+
+  for (int i = 0; i < factors.size(); i++) {
+    const auto &factor = factors[i];
+
+    assert(pose == factor->getPoses()[0]);
+
+    const auto &lin =
+        std::dynamic_pointer_cast<const VertexPointToPlaneFactor::Linearization>(
+            lins[i]);
+
+    const auto &JPose =
+        Eigen::Map<const Matrix<1, 6>>(lin->jacobians[0][0].data());
+    const auto &JVertex =
+        Eigen::Map<const Matrix<1, P>>(lin->jacobians[3][0].data());
 
     const auto &gPose = lin->gPose;
     const auto &gVertex = Eigen::Map<const Vector<P>>(lin->gVertex.data());

@@ -20,14 +20,15 @@ struct FactorIndex {
   static const int RelPOF = 6;
   static const int JointDepthCamera = 7;
   static const int VertexDepthCamera = 8;
-  static const int JointLimit = 9;
-  static const int Collision = 10;
-  static const int JointConst = 11;
-  static const int PoseConst = 12;
-  static const int Pose = 13;
-  static const int Shape = 14;
-  static const int Joint = 15;
-  static const int Parameter = 16;
+  static const int VertexPointToPlane = 9;
+  static const int JointLimit = 10;
+  static const int Collision = 11;
+  static const int JointConst = 12;
+  static const int PoseConst = 13;
+  static const int Pose = 14;
+  static const int Shape = 15;
+  static const int Joint = 16;
+  static const int Parameter = 17;
 };
 
 static const int NumFactors = FactorIndex::Parameter + 1;
@@ -441,6 +442,7 @@ class Optimizer {
   virtual int updateRelPOFFactorGaussNewton() const;
   virtual int updateJointDepthCameraFactorGaussNewton() const;
   virtual int updateVertexDepthCameraFactorGaussNewton() const;
+  virtual int updateVertexPointToPlaneFactorGaussNewton() const;
   virtual int updateJointLimitFactorGaussNewton() const;
   virtual int updateCollisionFactorGaussNewton() const;
   virtual int updatePoseConstFactorGaussNewton() const;
@@ -459,6 +461,7 @@ class Optimizer {
   virtual int updateRelPOFFactorGaussNewton(int pose) const;
   virtual int updateJointDepthCameraFactorGaussNewton(int pose) const;
   virtual int updateVertexDepthCameraFactorGaussNewton(int pose) const;
+  virtual int updateVertexPointToPlaneFactorGaussNewton(int pose) const;
   virtual int updateJointLimitFactorGaussNewton(int pose) const;
   virtual int updateCollisionFactorGaussNewton(int pose) const;
   virtual int updatePoseConstFactorGaussNewton(int pose) const;

@@ -19,4 +19,5 @@
 #include <scope/factor/UnitPOFFactor.h>
 #include <scope/factor/VertexDepthCameraFactor.h>
 #include <scope/factor/VertexExtraPinholeCameraFactor.h>
+#include <scope/factor/VertexPointToPlaneFactor.h>
 #include <scope/factor/VertexPinholeCameraFactor.h>
