@@ -1533,6 +1533,73 @@ int createVertexDepthCameraFactors(
   return 0;
 }
 
+int createVertexPointToPlaneFactors(
+    const std::vector<std::tuple<int, int, int, Scalar>> &Info, int VertexParam,
+    const MatrixX &JDirs, const VectorX &J, const MatrixX &KeyPointDirs,
+    const VectorX &KeyPoints, Scalar gm_est_sigma, Scalar gm_est_eps,
+    const Matrix3X &NearestPoints, const Matrix3X &VertexNormals,
+    const Vector3 &root,
+    std::vector<std::shared_ptr<VertexPointToPlaneFactor>> &factors) {
+  factors.clear();
+
+  assert(KeyPoints.size() % 3 == 0);
+  assert(J.size() % 3 == 0);
+  assert(KeyPointDirs.rows() == KeyPoints.size());
+  assert(JDirs.rows() == J.size());
+
+  if (KeyPoints.size() % 3 || J.size() % 3 ||
+      KeyPointDirs.rows() != KeyPoints.size() || JDirs.rows() != J.size()) {
+    LOG(ERROR) << "Inconsistent keypoints or joint locations." << std::endl;
+
+    exit(-1);
+  }
+
+  const int M = NearestPoints.cols();
+  const int N = J.size() / 3;
+  const int K = KeyPoints.size() / 3;
+
+  assert(VertexNormals.cols() == M);
+
+  if (VertexNormals.cols() != M) {
+    LOG(ERROR) << "Inconsistent nearest points or normals." << std::endl;
+
+    exit(-1);
+  }
+
+  factors.reserve(Info.size());
+
+  Matrix3X KptDirs;
+  Vector3 Kpt;
+
+  for (const auto &info : Info) {
+    const auto &m = std::get<0>(info);
+    const auto &i = std::get<1>(info);
+    const auto &v = std::get<2>(info);
+    const auto &confidence = std::get<3>(info);
+
+    if (m >= M || i >= N || v >= K) {
+      LOG(ERROR) << "Inconsistent factor information or measurements."
+                 << std::endl;
+
+      factors.clear();
+
+      exit(-1);
+    }
+
+    const Vector3 nearestPoint = NearestPoints.col(m) + root;
+    const Vector3 normal = VertexNormals.col(m);
+
+    KptDirs = KeyPointDirs.middleRows<3>(3 * v) - JDirs.middleRows<3>(3 * i);
+    Kpt = KeyPoints.segment<3>(3 * v) - J.segment<3>(3 * i);
+
+    factors.push_back(std::make_shared<VertexPointToPlaneFactor>(
+        i, VertexParam, KptDirs, Kpt, gm_est_sigma, gm_est_eps, nearestPoint,
+        normal, confidence));
+  }
+
+  return 0;
+}
+
 int createJointConstFactors(
     const AlignedVector<std::tuple<int, Vector3, Matrix3, Vector3, Vector3>>
         &JointConstInfo,

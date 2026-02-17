@@ -261,6 +261,14 @@ int createVertexDepthCameraFactors(
     const Matrix3X &Measurements, const Vector3 &root,
     std::vector<std::shared_ptr<VertexDepthCameraFactor>> &factors);
 
+int createVertexPointToPlaneFactors(
+    const std::vector<std::tuple<int, int, int, Scalar>> &Info, int VertexParam,
+    const MatrixX &JDirs, const VectorX &J, const MatrixX &KeyPointDirs,
+    const VectorX &KeyPoints, Scalar gm_est_sigma, Scalar gm_est_eps,
+    const Matrix3X &NearestPoints, const Matrix3X &VertexNormals,
+    const Vector3 &root,
+    std::vector<std::shared_ptr<VertexPointToPlaneFactor>> &factors);
+
 int createJointConstFactors(
     const AlignedVector<std::tuple<int, Vector3, Matrix3, Vector3, Vector3>>
         &JointConstInfo,
